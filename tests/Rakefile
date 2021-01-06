@@ -1,0 +1,23 @@
+desc "Generate the JSON output test fixtures from puppet-strings gem"
+task :generate do
+  require 'puppet-strings'
+  require 'puppet-strings/yard'
+  require 'puppet-strings/json'
+
+  fixtures_dir = File.join(File.dirname(__FILE__), 'fixtures')
+  out_dir =  File.join(File.dirname(__FILE__), 'out-ruby-puppet-strings')
+
+  puts "Clearing out previous output"
+  FileUtils.rm(Dir.glob(File.join(out_dir,'*.json')))
+
+
+
+  Dir.glob(File.join(fixtures_dir,'*.pp')).each do |file|
+    out_filename = File.join(out_dir, File.basename(file) + '.json')
+    puts "Creating #{out_filename} ..."
+
+    `puppet strings generate --format=json "--out=#{out_filename}" "#{file}"`
+  end
+
+
+end

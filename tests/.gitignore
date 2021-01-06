@@ -1,0 +1,4 @@
+Gemfile.lock
+out-ruby-puppet-strings/*.json
+.yardoc/
+doc/
