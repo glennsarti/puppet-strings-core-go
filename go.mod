@@ -1,4 +1,4 @@
-module github.com/glennsarti/puppet-strings-core-go/v2
+module github.com/glennsarti/puppet-strings-core-go
 
 go 1.15
 
