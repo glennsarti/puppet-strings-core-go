@@ -12,7 +12,7 @@ task :generate do
 
 
 
-  Dir.glob(File.join(fixtures_dir,'*.pp')).each do |file|
+  Dir.glob(File.join(fixtures_dir,'*.{pp,json,rb}')).each do |file|
     out_filename = File.join(out_dir, File.basename(file) + '.json')
     puts "Creating #{out_filename} ..."
 

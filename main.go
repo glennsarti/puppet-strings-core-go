@@ -8,6 +8,7 @@ import (
 
 	"github.com/glennsarti/puppet-strings-core-go/yard"
 	"github.com/glennsarti/puppet-strings-core-go/yard/puppet"
+	"github.com/glennsarti/puppet-strings-core-go/yard/ruby"
 
 	"encoding/json"
 )
@@ -15,8 +16,9 @@ import (
 func main() {
 	registry := yard.NewRegistry()
 
-	filename := "/workspaces/puppet-strings-core-go/tests/fixtures/plan.pp"
+	//filename := "/workspaces/puppet-strings-core-go/tests/fixtures/plan.pp"
 	//filename := "/workspaces/puppet-strings-core-go/tests/fixtures/type_alias.pp"
+	filename := "/workspaces/puppet-strings-core-go/tests/fixtures/func3x.rb"
 
 	content, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -24,7 +26,8 @@ func main() {
 	}
 
 	// TODO: Is plan mode always true? probably not
-	puppet.Parse(filename, string(content), true, registry)
+	//puppet.Parse(filename, string(content), true, registry)
+	ruby.Parse(filename, string(content), registry)
 
 	// Convert the Yard Registry into the expected JSON output from Puppet-Strings
 	result := Output{}
