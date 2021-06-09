@@ -3,63 +3,59 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 
-	"github.com/glennsarti/puppet-strings-core-go/yard"
-	"github.com/glennsarti/puppet-strings-core-go/yard/puppet"
-	"github.com/glennsarti/puppet-strings-core-go/yard/ruby"
-
-	"encoding/json"
+	"github.com/glennsarti/puppet-strings-core-go/puppet_strings_go"
 )
 
 func main() {
-	registry := yard.NewRegistry()
-
-	//filename := "/workspaces/puppet-strings-core-go/tests/fixtures/plan.pp"
-	//filename := "/workspaces/puppet-strings-core-go/tests/fixtures/type_alias.pp"
-	filename := "/workspaces/puppet-strings-core-go/tests/fixtures/func3x.rb"
+	filename := "/workspaces/puppet-strings-core-go/tests/fixtures/func4x_1.rb"
 
 	content, err := ioutil.ReadFile(filename)
 	if err != nil {
 		panic(err)
 	}
 
-	// TODO: Is plan mode always true? probably not
-	//puppet.Parse(filename, string(content), true, registry)
-	ruby.Parse(filename, string(content), registry)
+	// parser := sitter.NewParser()
+	// parser.SetLanguage(ruby.GetLanguage())
 
-	// Convert the Yard Registry into the expected JSON output from Puppet-Strings
-	result := Output{}
-	result.DataTypeAliases = make([]puppet.DataTypeAlias, 0)
-	result.PuppetPlans = make([]puppet.PuppetPlan, 0)
+	// tree := parser.Parse(nil, content)
 
-	// Convert the registry into an output
-	for _, item := range registry.All {
-		switch item.(type) {
-		case puppet.DataTypeAlias:
-			{
-				result.DataTypeAliases = append(result.DataTypeAliases, item.(puppet.DataTypeAlias))
-			}
-		case puppet.PuppetPlan:
-			{
-				result.PuppetPlans = append(result.PuppetPlans, item.(puppet.PuppetPlan))
-			}
-		}
+	// fmt.Println(tree.RootNode())
+	// fmt.Println("-----------------")
+	// walkNode(tree.RootNode(), 0)
+
+	rb := puppet_strings_go.NewRubyStringsFinder()
+	rb.Find(content)
+
+
+
+
+  b, err := json.MarshalIndent(rb.StringsObjects, "", "  ")
+	if err != nil {
+		fmt.Printf("Error: %s", err)
+		return;
 	}
-
-	emitJSON(result)
+	fmt.Println("-- JSON --")
+	fmt.Println(string(b))
 }
 
-func emitJSON(value interface{}) {
-	out, _ := json.MarshalIndent(value, "", "  ")
-	fmt.Println(string(out))
-}
 
-type (
-	// Output Puppet Strings YARD output
-	Output struct {
-		DataTypeAliases []puppet.DataTypeAlias `json:"data_type_aliases"`
-		PuppetPlans     []puppet.PuppetPlan    `json:"puppet_plans"`
-	}
-)
+// -----------
+
+
+// func walkNode(node *sitter.Node, indent int) {
+// 	if (node == nil) { return }
+
+// 	it := ""
+// 	for i := 0; i < indent; i++ {
+// 		it = it + " "
+// 	}
+// 	fmt.Printf("%s(%d) %s\n", it, node.Symbol(), node.Type())
+
+// 	for i := 0; i < int(node.ChildCount()); i++ {
+// 		walkNode(node.Child(i), indent + 1)
+// 	}
+// }
