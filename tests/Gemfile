@@ -5,3 +5,6 @@ group :development do
   gem 'puppet',         '~> 6.0',   :require => false
   gem 'puppet-strings', '~> 2.5.0', :require => false
 end
+
+gem "pry-byebug"
+gem "pry-stack_explorer"

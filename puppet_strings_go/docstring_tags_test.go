@@ -10,7 +10,11 @@ import (
 func AssertExtractTypesAndNameFromText(t *testing.T, prefix string, content string, expectBefore string, expectList []string, expectText string) {
 	ds := newDocstring()
 
-	before, list, text, err := ds.extractTypesAndNameFromTextUnStripped(strings.Split(content, "\n"), typelistOpeningChars, typelistClosingChars)
+	before, list, text, err := ds.extractTypesAndNameFromText(
+		strings.Split(content, "\n"),
+		ds.typelistOpeningChars(),
+		ds.typelistClosingChars(),
+	)
 	if err != nil { t.Errorf("%s: Expected not error but got %s", prefix, err)}
 	if before != expectBefore {
 		t.Errorf("%s: Expected before to be '%s' but got '%s'", prefix, expectBefore, before)
@@ -24,7 +28,7 @@ func AssertExtractTypesAndNameFromText(t *testing.T, prefix string, content stri
 	} else {
 		for i, item := range expectList {
 			if list[i] != item {
-				t.Errorf("%s: Expected list item %d to be '%s' but got '%s'", prefix, i, item, expectList[i])
+				t.Errorf("%s: Expected list item %d to be '%s' but got '%s'", prefix, i, item, list[i])
 			}
 		}
 	}
@@ -52,7 +56,7 @@ func TestExtractTypesAndNameFromText1(t *testing.T) {
 		"Ducktypes",
 		"[#foo]",
 		"",
-		[]string{"A"},
+		[]string{"#foo"},
 		"",
 	)
 
@@ -93,6 +97,14 @@ func TestExtractTypesAndNameFromText1(t *testing.T) {
 			"",
 		)
 	}
+
+	AssertExtractTypesAndNameFromText(t,
+		"Handles quoted strings",
+		" [\"foo, bar\", 'baz, qux', in\"them,iddle\"]",
+		"",
+		[]string{"\"foo, bar\"", "'baz, qux'", "in\"them,iddle\""},
+		"",
+	)
 }
 
 
