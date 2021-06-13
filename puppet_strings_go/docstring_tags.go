@@ -15,6 +15,14 @@ func (ds *Docstring) typelistClosingChars() []rune {
 	return[]rune{'>', '}', ')', ']', '"'}
 }
 
+func (ds *Docstring) whiteSpaceRunes() []rune {
+	return[]rune{0, ' ', '\t', '\n'}
+}
+
+const (
+	methodNameMatch = `[a-zA-Z_]\w*[!?=]?|[-+~]\@|<<|>>|=~|===?|![=~]?|<=>|[<>]=?|\*\*|[-\/+%^&*~` + "`" + `|]|\[\]=?`
+)
+
 func (ds *Docstring) parseTagWithTitleAndText(tagName string, lines []string) (tag *DocstringTag, err error) {
 	title, desc, err := ds.extractTitleAndDescFromLines(lines)
 	if (err != nil) { return nil, err }
@@ -84,12 +92,26 @@ func (ds *Docstring) consumeWhiteSpace(sr StringReader) {
 	}
 }
 
-func (ds *Docstring) consumeUntilWhiteSpace(sr StringReader) (string) {
+func (ds *Docstring) consumeUntilWhiteSpaceOrRune(sr StringReader, runes []rune) (string) {
+	startPos := sr.Pos()
+	for {
+		c, endPos := sr.Peek()
+		if includes(ds.whiteSpaceRunes(), c) || includes(runes, c) {
+			return sr.SubString(startPos, endPos)
+		}
+		sr.Next()
+	}
+}
+
+func (ds *Docstring) consumeUntilRune(sr StringReader, r rune) (string) {
 	startPos := sr.Pos()
 	for {
 		c, endPos := sr.Peek()
 		switch c {
-		case 0,' ','\t','\n':
+		case 0,'\n':
+			return sr.SubString(startPos, endPos)
+		case r:
+			_, endPos = sr.Next()
 			return sr.SubString(startPos, endPos)
 		}
 		sr.Next()
@@ -101,6 +123,15 @@ func (ds *Docstring) consumeTypes(sr StringReader, openingTypes []rune, closingT
 	list := make([]string, 0)
 	startPos := sr.Pos()
 
+	mnmRegex := regexp.MustCompile(methodNameMatch)
+
+
+	// if level > 0 && c == '#' && text[i + 1..-1] =~ CodeObjects::METHODNAMEMATCH
+	// list.last << c + $&
+	// i += $&.length + 1
+	// next
+
+
 	for {
 		ds.consumeWhiteSpace(sr)
 		c, _ := sr.Next()
@@ -111,16 +142,26 @@ func (ds *Docstring) consumeTypes(sr StringReader, openingTypes []rune, closingT
 		case c == ',' && depth == 0:
 			list = append(list, sr.SubString(startPos, sr.Pos() - 1))
 			startPos = sr.Pos()
-		// TODO: Quoted Strings
+		case c == '\'' || c == '"':
+			// YARD doesn't do any interpolation so it's plain literal strings
+			ds.consumeUntilRune(sr, c)
 		case includes(openingTypes, c):
 			depth += 1
 		case includes(closingTypes, c):
 			if depth == 0 {
-				list = append(list, sr.SubString(startPos, sr.Pos() - 1))
+				if startPos != sr.Pos() -1 {
+					list = append(list, sr.SubString(startPos, sr.Pos() - 1))
+				}
 				return list
 			} else {
 				depth -= 1
 			}
+		case c == '#':
+			if m := mnmRegex.FindStringSubmatch(sr.PeekUntilEnd()); m != nil {
+				list = append(list, string(c) + m[0])
+				sr.Advance(len(m[0]))
+			}
+			//mnmRegex.FindStringSubmatch("abc")
 		}
 	}
 }
@@ -146,7 +187,7 @@ func (ds *Docstring) extractTypesAndNameFromTextUnStripped(lines []string, openi
 			}
 		}
 		if before == "" {
-			before = string(c) + ds.consumeUntilWhiteSpace(sr)
+			before = string(c) + ds.consumeUntilWhiteSpaceOrRune(sr, openingTypes)
 			continue
 		}
 		after = string(c)
@@ -157,7 +198,7 @@ func (ds *Docstring) extractTypesAndNameFromTextUnStripped(lines []string, openi
 		after = lines[0]
 		before = ""
 	} else {
-		after = after + sr.UntilEnd()
+		after = after + sr.PeekUntilEnd()
 	}
 
 	if len(lines) > 1 {

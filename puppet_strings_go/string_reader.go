@@ -2,7 +2,6 @@ package puppet_strings_go
 
 import (
 	"bytes"
-	"fmt"
 	"unicode/utf8"
 )
 
@@ -11,10 +10,11 @@ type StringReader interface {
 	Peek() (c rune, start int)
 	NextLine() (line string, start int, end int)
 	PeekNextLine() (line string, start int, end int)
+	Advance(size int)
 	Pos() int
 	SetPos(pos int)
 	SubString(start int, end int) string
-	UntilEnd() string
+	PeekUntilEnd() string
 	IsEOF() bool
 
 	// // Returns the the current rune and its size in the parsed string. The position does not change
@@ -39,8 +39,6 @@ type stringReader struct {
 }
 
 func NewStringReader(text string) StringReader {
-	fmt.Printf("() %s\n", text)
-
 	return &stringReader{pos: 0, text: text}
 }
 
@@ -87,6 +85,10 @@ func (sr *stringReader) PeekNextLine() (line string, start int, end int) {
 	return line, start, end
 }
 
+func (sr *stringReader) Advance(size int) {
+	sr.pos = sr.pos + size
+}
+
 func (sr *stringReader) Pos() (int) {
 	return sr.pos
 }
@@ -99,10 +101,7 @@ func (sr *stringReader) SubString(start int, end int) string {
 	return sr.text[start:end]
 }
 
-func (sr *stringReader) UntilEnd() string {
-
-	fmt.Println(sr.pos)
-	fmt.Println(len(sr.text))
+func (sr *stringReader) PeekUntilEnd() string {
 	return sr.text[sr.pos:]
 }
 func (sr *stringReader) IsEOF() bool {
