@@ -4,7 +4,7 @@ require 'json'
 c = "An overview for the first overload.\n" +
 "@raise SomeError this is some error\n" +
 "@param param1 The first parameter.\n" +
-"@param param2 [#abc, #>>] The second parameter.\n" +
+"@param The second parameter.\n" +
 "@option [param2] :option an option\n" +
 "@option param2 [String] :option2 another option\n" +
 "@param param3 The third parameter.\n" +

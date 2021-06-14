@@ -16,15 +16,19 @@ func (ds *Docstring) typelistClosingChars() []rune {
 }
 
 func (ds *Docstring) whiteSpaceRunes() []rune {
-	return[]rune{0, ' ', '\t', '\n'}
+	return[]rune{0, ' ', '\t'}
+}
+
+func (ds *Docstring) emptyRunes() []rune {
+	return[]rune{}
 }
 
 const (
 	methodNameMatch = `[a-zA-Z_]\w*[!?=]?|[-+~]\@|<<|>>|=~|===?|![=~]?|<=>|[<>]=?|\*\*|[-\/+%^&*~` + "`" + `|]|\[\]=?`
 )
 
-func (ds *Docstring) parseTagWithTitleAndText(tagName string, lines []string) (tag *DocstringTag, err error) {
-	title, desc, err := ds.extractTitleAndDescFromLines(lines)
+func (ds *Docstring) parseTagWithTitleAndText(tagName string, text string) (tag *DocstringTag, err error) {
+	title, desc, err := ds.extractTitleAndDescFromText(text)
 	if (err != nil) { return nil, err }
 	return &DocstringTag{
 		TagName: tagName,
@@ -33,8 +37,8 @@ func (ds *Docstring) parseTagWithTitleAndText(tagName string, lines []string) (t
 	}, nil
 }
 
-func (ds *Docstring) parseTagWithTypes(tagName string, lines []string) (tag *DocstringTag, err error) {
-	name, types, text, err := ds.extractTypesAndNameFromText(lines, ds.typelistOpeningChars(), ds.typelistClosingChars())
+func (ds *Docstring) parseTagWithTypes(tagName string, text string) (tag *DocstringTag, err error) {
+	name, types, text, err := ds.extractTypesAndNameFromText(text, ds.typelistOpeningChars(), ds.typelistClosingChars())
 	if err != nil { return nil, err }
 	if name != "" { return nil, errors.New(fmt.Sprintf("Cannot specify a name before type list for '@%s'", tagName))}
 
@@ -45,11 +49,33 @@ func (ds *Docstring) parseTagWithTypes(tagName string, lines []string) (tag *Doc
 	}, nil
 }
 
-func (ds *Docstring) extractTitleAndDescFromLines(lines []string) (title string, desc string, err error) {
-	if len(lines) == 0 { return "","", errors.New("Missing text for a tag") }
+func (ds *Docstring) parseTagWithTypesAndName(tagName string, text string) (tag *DocstringTag, err error) {
+	name, types, text, err := ds.extractTypesAndNameFromText(text, ds.typelistOpeningChars(), ds.typelistClosingChars())
+	if err != nil { return nil, err }
+	return &DocstringTag{
+		TagName: tagName,
+		Text: text,
+		Types: types,
+		Name: name,
+	}, nil
+}
+
+func (ds *Docstring) extractNameFromText(text string) (name string, remainText string, err error) {
+	sr := NewStringReader(text)
+
+	ds.consumeWhiteSpace(sr, false)
+	name = ds.consumeUntilWhiteSpaceOrRune(sr, ds.emptyRunes())
+
+	return name, sr.UntilEnd(), nil
+}
+
+func (ds *Docstring) extractTitleAndDescFromText(text string) (title string, desc string, err error) {
+	if len(text) == 0 { return "","", errors.New("Missing text for a tag") }
 	title = ""
 	desc = ""
 
+	// TODO: This could be done better using a string reader
+	lines := strings.SplitN(text, "\n", 2)
 	if len(lines) == 1 { return strings.TrimSpace(lines[0]), desc, nil }
 
 	if regexp.MustCompile(`\A[ \t]\z`).MatchString(lines[0]) {
@@ -65,30 +91,31 @@ func (ds *Docstring) extractTitleAndDescFromLines(lines []string) (title string,
 	}
 }
 
-func (ds *Docstring) extractTypesAndNameFromText(lines []string, openingTypes []rune, closingTypes []rune) (before string, types []string, text string, err error) {
-	before, list, text, err := ds.extractTypesAndNameFromTextUnStripped(lines, openingTypes, closingTypes)
+func (ds *Docstring) extractTypesAndNameFromText(text string, openingTypes []rune, closingTypes []rune) (before string, types []string, remainText string, err error) {
+	before, list, remainText, err := ds.extractTypesAndNameFromTextUnStripped(text, openingTypes, closingTypes)
 	if err != nil { return before, list, text, err }
 
 	for i, e := range list {
 		list[i] = strings.TrimSpace(e)
 	}
 
-	return strings.TrimSpace(before), list, strings.TrimSpace(text), err
+	return strings.TrimSpace(before), list, strings.TrimSpace(remainText), err
 }
 
-
-func (ds *Docstring) consumeWhiteSpace(sr StringReader) {
+func (ds *Docstring) consumeWhiteSpace(sr StringReader, consumeLF bool) {
 	for {
 		c, _ := sr.Peek()
-		switch c {
-		case 0:
+
+		switch {
+		case c == 0:
 			return
-		case ' ','\t':
-			break
+		case c == '\n':
+			if consumeLF { sr.Next() } else { return }
+		case includes(ds.whiteSpaceRunes(),c):
+			sr.Next()
 		default:
 			return
 		}
-		sr.Next()
 	}
 }
 
@@ -127,7 +154,7 @@ func (ds *Docstring) consumeTypes(sr StringReader, openingTypes []rune, closingT
 	mnmRegex := regexp.MustCompile(methodNameMatch)
 
 	for {
-		ds.consumeWhiteSpace(sr)
+		ds.consumeWhiteSpace(sr, false)
 		c, _ := sr.Next()
 
 		switch {
@@ -166,18 +193,18 @@ func (ds *Docstring) consumeTypes(sr StringReader, openingTypes []rune, closingT
 	}
 }
 
-func (ds *Docstring) extractTypesAndNameFromTextUnStripped(lines []string, openingTypes []rune, closingTypes []rune) (before string, types []string, text string, err error) {
-	if (len(lines) == 0) { return "", make([]string, 0), "", nil }
-	sr := NewStringReader(lines[0])
+func (ds *Docstring) extractTypesAndNameFromTextUnStripped(text string, openingTypes []rune, closingTypes []rune) (before string, types []string, remainText string, err error) {
+	if (len(text) == 0) { return "", make([]string, 0), "", nil }
+	sr := NewStringReader(text)
 
 	foundTypes := false
 	before = ""
 	after := ""
 
 	for {
-		ds.consumeWhiteSpace(sr)
+		ds.consumeWhiteSpace(sr, false)
 		c, _ := sr.Next()
-		if c == 0 { break }
+		if c == 0 || c == '\n' { break }
 
 		if !foundTypes && includes(openingTypes, c) {
 			if t := ds.consumeTypes(sr, openingTypes, closingTypes); len(t) > 0 {
@@ -195,14 +222,10 @@ func (ds *Docstring) extractTypesAndNameFromTextUnStripped(lines []string, openi
 	}
 
 	if !foundTypes {
-		after = lines[0]
+		after = text
 		before = ""
 	} else {
-		after = after + sr.PeekUntilEnd()
-	}
-
-	if len(lines) > 1 {
-		after = "\n" + strings.Join(lines[1:], "\n")
+		after = after + sr.UntilEnd()
 	}
 
 	return before, types, after, nil

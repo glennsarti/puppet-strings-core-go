@@ -15,6 +15,7 @@ type StringReader interface {
 	SetPos(pos int)
 	SubString(start int, end int) string
 	PeekUntilEnd() string
+	UntilEnd() string
 	IsEOF() bool
 }
 
@@ -89,6 +90,13 @@ func (sr *stringReader) SubString(start int, end int) string {
 func (sr *stringReader) PeekUntilEnd() string {
 	return sr.text[sr.pos:]
 }
+
+func (sr *stringReader) UntilEnd() string {
+	i := sr.pos
+	sr.pos = len(sr.text)
+	return sr.text[i:]
+}
+
 func (sr *stringReader) IsEOF() bool {
 	return sr.pos >= len(sr.text)
 }

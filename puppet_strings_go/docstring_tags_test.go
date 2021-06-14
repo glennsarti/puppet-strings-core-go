@@ -12,7 +12,7 @@ func AssertExtractTypesAndNameFromText(t *testing.T, prefix string, content stri
 	ds := newDocstring()
 
 	before, list, text, err := ds.extractTypesAndNameFromText(
-		strings.Split(content, "\n"),
+		content,
 		ds.typelistOpeningChars(),
 		ds.typelistClosingChars(),
 	)

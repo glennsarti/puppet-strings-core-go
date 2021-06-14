@@ -77,7 +77,7 @@ func (ds *Docstring) parse(content string) (err error) {
 				//       docstring << parse_content(directive.expanded_text).chomp
 				//     end
 			} else {
-				t, err := ds.createTag(tagName, tagLineBuf)
+				t, err := ds.createTag(tagName, strings.Join(tagLineBuf, "\n"))
 				if err != nil {
 					fmt.Println("Error creating tag:")
 					fmt.Println(err)
@@ -117,18 +117,47 @@ func (ds *Docstring) parse(content string) (err error) {
 	return nil
 }
 
-func (ds *Docstring) createTag(tagName string, lines []string) (tag *DocstringTag, err error) {
+func (ds *Docstring) createTag(tagName string, text string) (tag *DocstringTag, err error) {
 
 	switch tagName {
 	case "example":
-		return ds.parseTagWithTitleAndText(tagName, lines)
+		return ds.parseTagWithTitleAndText(tagName, text)
 
 	case "return", "raise":
-		return ds.parseTagWithTypes(tagName, lines)
+		return ds.parseTagWithTypes(tagName, text)
+
+	case "param":
+		return ds.parseTagWithTypesAndName(tagName, text)
+
 	}
+
+// - abstract
+// - api
+// - attr
+// - attr_reader
+// - attr_writer
+// - author
+// - deprecated
+// x example
+// - note
+// - option
+// - overload
+// - param
+// - private
+// x raise
+// x return
+// - see
+// - since
+// - todo
+// - version
+// - yield
+// - yieldparam
+// - yieldreturn
 
 	return &DocstringTag{},nil
 }
+
+
 
 
 
