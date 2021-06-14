@@ -123,7 +123,7 @@ func (ds *Docstring) createTag(tagName string, lines []string) (tag *DocstringTa
 	case "example":
 		return ds.parseTagWithTitleAndText(tagName, lines)
 
-	case "return":
+	case "return", "raise":
 		return ds.parseTagWithTypes(tagName, lines)
 	}
 

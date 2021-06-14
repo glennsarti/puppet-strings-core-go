@@ -16,21 +16,6 @@ type StringReader interface {
 	SubString(start int, end int) string
 	PeekUntilEnd() string
 	IsEOF() bool
-
-	// // Returns the the current rune and its size in the parsed string. The position does not change
-	// Peek() (c rune, size int)
-
-	// Advance(size int)
-
-	// Pos() int
-
-	// SetPos(int)
-
-	// // Returns the string that is backing the reader
-	// Text() string
-
-	// // Returns the substring starting at start and up to, but not including, the current position
-	// From(start int) string
 }
 
 type stringReader struct {

@@ -123,14 +123,8 @@ func (ds *Docstring) consumeTypes(sr StringReader, openingTypes []rune, closingT
 	list := make([]string, 0)
 	startPos := sr.Pos()
 
+	// TODO: Can we compile this only once?
 	mnmRegex := regexp.MustCompile(methodNameMatch)
-
-
-	// if level > 0 && c == '#' && text[i + 1..-1] =~ CodeObjects::METHODNAMEMATCH
-	// list.last << c + $&
-	// i += $&.length + 1
-	// next
-
 
 	for {
 		ds.consumeWhiteSpace(sr)
@@ -156,12 +150,18 @@ func (ds *Docstring) consumeTypes(sr StringReader, openingTypes []rune, closingT
 			} else {
 				depth -= 1
 			}
+		case c == '=':
+			n, _ := sr.Peek()
+			// Hash rockets trip up the closing '>' tag so skip by
+			if n == '>' {
+				sr.Advance(2)
+			}
 		case c == '#':
 			if m := mnmRegex.FindStringSubmatch(sr.PeekUntilEnd()); m != nil {
-				list = append(list, string(c) + m[0])
+				// TODO: Should really advance in byte length not number of characters
+				// but the regex is really only looking for single byte chars its mostly safe
 				sr.Advance(len(m[0]))
 			}
-			//mnmRegex.FindStringSubmatch("abc")
 		}
 	}
 }
