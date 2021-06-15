@@ -5,7 +5,7 @@ c = "An overview for the first overload.\n" +
 "@raise SomeError this is some error\n" +
 "@param param1 The first parameter.\n" +
 "@param The second parameter.\n" +
-"@option [param2] :option an option\n" +
+"@option param2 [String] :option an option\n" +
 "@option param2 [String] :option2 another option\n" +
 "@param param3 The third parameter.\n" +
 "@param param4 The fourth parameter.\n" +
@@ -20,10 +20,10 @@ c = "An overview for the first overload.\n" +
 p = YARD::DocstringParser.new()
 p.parse(c)
 
-#require 'pry'; binding.pry
-
 puts "-----"
-pt = p.tags[2]
+pt = p.tags[4]
+require 'pry'; binding.pry
+
 puts "tag_name: #{pt.tag_name}"
 puts "name: #{pt.name}"
 puts "text: #{pt.text}"

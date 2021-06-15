@@ -1,21 +1,74 @@
 package puppet_strings_go
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
 )
 
 type Docstring struct {
-	Text string `json:"text,omitempty"`
-	Tags []DocstringTag `json:"tags"`
+	Text string
+
+
+	Tags []DocstringTag
+
 }
 
+func (ds Docstring) MarshalJSON() ([]byte, error) {
+	buf := bytes.NewBufferString("{")
+	buf.WriteString("\"text\":")
+	if s, err := json.Marshal(ds.Text); err != nil {
+		return nil, err
+	} else {
+		buf.Write(s)
+	}
+
+	commaPrefix := false
+	buf.WriteString(",\"tags\":[")
+	// Append the base tags
+	for _, t := range ds.Tags {
+		if err := appendMarshalledTag(buf, t, commaPrefix); err != nil { return nil, err}
+		commaPrefix = true
+	}
+	buf.WriteString("]")
+
+	buf.WriteString("}")
+	return buf.Bytes(), nil
+}
+
+func appendMarshalledTag(buf *bytes.Buffer, t interface{}, commaPrefix bool) (err error) {
+	if commaPrefix { buf.WriteString(",") }
+	if s, err := json.Marshal(t); err != nil {
+		return err
+	} else {
+		buf.Write(s)
+	}
+	return
+}
+
+
+
+// https://github.com/lsegal/yard/blob/main/lib/yard/tags/tag.rb
 type DocstringTag struct {
 	TagName string `json:"tag_name,omitempty"`
 	Text string `json:"text,omitempty"`
 	Types []string `json:"types,omitempty"`
 	Name string `json:"name,omitempty"`
+}
+
+// https://github.com/lsegal/yard/blob/main/lib/yard/tags/option_tag.rb
+type OptionsDocstringTag struct {
+	DocstringTag
+	Pair *DefaultDocstringTag `json:"pair,omitempty"`
+}
+
+// https://github.com/lsegal/yard/blob/main/lib/yard/tags/default_tag.rb
+type DefaultDocstringTag struct {
+	DocstringTag
+	// TODO: What is this?
+	Defaults interface{} `json:"defaults,omitempty"`
 }
 
 func ParseDocstring(content string) Docstring {
@@ -34,7 +87,6 @@ func newDocstring() Docstring {
 		Tags: make([]DocstringTag, 0),
 	}
 }
-
 
 func (ds *Docstring) isTagDirective(tagName string) bool {
 	// TODO:
@@ -92,19 +144,15 @@ func (ds *Docstring) parse(content string) (err error) {
 		}
 
 		// # Found a meta tag
-		//if line =~ META_MATCH
 		if m := metaTagRegex.FindStringSubmatch(line); m != nil {
 			directive = (m[1] != "")
 			tagName = m[2]
 			tagLineBuf = append(tagLineBuf, m[3])
-		// elsif tag_name && indent >= orig_indent && !empty
 		} else if tagName != "" && indent >= origIndent && !empty {
 			if origIndent == 0 { origIndent = indent }
 			// Extra data added to the tag on the next line
 			if emptyRegex.MatchString(lastLine) { tagLineBuf = append(tagLineBuf, "") }
 			tagLineBuf = append(tagLineBuf, regexp.MustCompile(fmt.Sprintf("\\A[ \\t]{%d}", origIndent)).ReplaceAllString(line, ""))
-
-		// elsif !tag_name
 		} else if tagName == "" {
 			ds.Text += line + "\n"
 		}
@@ -129,6 +177,9 @@ func (ds *Docstring) createTag(tagName string, text string) (tag *DocstringTag, 
 	case "param":
 		return ds.parseTagWithTypesAndName(tagName, text)
 
+	case "option":
+		return ds.parseTagWithOptions(tagName, text)
+
 	}
 
 // - abstract
@@ -142,7 +193,7 @@ func (ds *Docstring) createTag(tagName string, text string) (tag *DocstringTag, 
 // - note
 // - option
 // - overload
-// - param
+// x param
 // - private
 // x raise
 // x return
