@@ -10,9 +10,17 @@ import (
 func (ds *Docstring) typelistOpeningChars() []rune {
 	return []rune{'"', '[', '(', '{', '<'}
 }
-
 func (ds *Docstring) typelistClosingChars() []rune {
 	return[]rune{'>', '}', ')', ']', '"'}
+}
+
+// Same as typelist* but without the '(' and ')'
+// Can't allow () in a default tag, otherwise the grammar is too ambiguous when types is omitted.
+func (ds *Docstring) defaultTagOpeningChars() []rune {
+	return []rune{'"', '[', '{', '<'}
+}
+func (ds *Docstring) defaultTagClosingChars() []rune {
+	return[]rune{'>', '}', ']', '"'}
 }
 
 func (ds *Docstring) whiteSpaceRunes() []rune {
@@ -49,25 +57,53 @@ func (ds *Docstring) parseTagWithTypes(tagName string, text string) (tag *Docstr
 	}, nil
 }
 
-func (ds *Docstring) parseTagWithOptions(tagName string, text string) (tag *DocstringTag, err error) {
-	// name, remainText, err := ds.extractNameFromText(text)
-	// if err != nil { return nil, err }
+func (ds *Docstring) parseTagWithOptions(tagName string, text string) (tag *OptionsDocstringTag, err error) {
+	name, remainText, err := ds.extractNameFromText(text)
+	if err != nil { return nil, err }
+	def, err := ds.parseTagWithTypesNameAndDefault(tagName, remainText)
 
-      // def parse_tag_with_options(tag_name, text)
-      //   name, text = *extract_name_from_text(text)
-      //   OptionTag.new(tag_name, name, parse_tag_with_types_name_and_default(tag_name, text))
-      // end
-
-
-
-	// name, types, text, err := ds.extractTypesAndNameFromText(text, ds.typelistOpeningChars(), ds.typelistClosingChars())
-	// if err != nil { return nil, err }
-	// if name != "" { return nil, errors.New(fmt.Sprintf("Cannot specify a name before type list for '@%s'", tagName))}
-
-	return &DocstringTag{
-		TagName: tagName,
-		Text: text,
+	return &OptionsDocstringTag{
+		Pair: def,
+		DocstringTag: DocstringTag{
+			TagName: tagName,
+			Text: name,
+		},
 	}, nil
+}
+
+func (ds *Docstring) parseTagWithTypesNameAndDefault(tagName string, text string) (tag *DefaultDocstringTag, err error) {
+	name, types, remainText, err := ds.extractTypesAndNameFromText(text, ds.defaultTagOpeningChars(), ds.defaultTagClosingChars())
+	if err != nil { return nil, err }
+	if name == "" {
+		name, remainText, err = ds.extractNameFromText(text)
+		if err != nil { return nil, err }
+	}
+
+	if strings.HasPrefix(strings.TrimSpace(remainText), "(") {
+		defaults := []string{}
+		before := ""
+		before, defaults, remainText, err = ds.extractTypesAndNameFromText(remainText, []rune{'('}, []rune{')'})
+
+		return &DefaultDocstringTag{
+			DocstringTag: DocstringTag{
+				TagName: tagName,
+				Text: before + remainText,
+				Types: types,
+				Name: name,
+			},
+			Defaults: defaults,
+		}, nil
+	} else {
+		return &DefaultDocstringTag{
+			DocstringTag: DocstringTag{
+				TagName: tagName,
+				Text: remainText,
+				Types: types,
+				Name: name,
+			},
+			Defaults: nil,
+		}, nil
+	}
 }
 
 func (ds *Docstring) parseTagWithTypesAndName(tagName string, text string) (tag *DocstringTag, err error) {

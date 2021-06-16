@@ -10,10 +10,33 @@ import (
 
 type Docstring struct {
 	Text string
-
-
 	Tags []DocstringTag
+	OptionTags []OptionsDocstringTag
+}
 
+// https://github.com/lsegal/yard/blob/main/lib/yard/tags/tag.rb
+type DocstringTag struct {
+	TagName string `json:"tag_name,omitempty"`
+	Text string `json:"text,omitempty"`
+	Types []string `json:"types,omitempty"`
+	Name string `json:"name,omitempty"`
+}
+
+// TODO: The marshaller needs to be updated for
+// https://github.com/puppetlabs/puppet-strings/blob/8a4a87e1b44e7581855d2c59ab4402abf438f9d8/lib/puppet-strings/yard/util.rb#L35
+//
+// https://github.com/lsegal/yard/blob/main/lib/yard/tags/option_tag.rb
+type OptionsDocstringTag struct {
+	DocstringTag
+	Pair *DefaultDocstringTag `json:"pair,omitempty"`
+}
+
+
+// https://github.com/lsegal/yard/blob/main/lib/yard/tags/default_tag.rb
+type DefaultDocstringTag struct {
+	DocstringTag
+	// TODO: What is this?
+	Defaults []string `json:"defaults,omitempty"`
 }
 
 func (ds Docstring) MarshalJSON() ([]byte, error) {
@@ -32,6 +55,11 @@ func (ds Docstring) MarshalJSON() ([]byte, error) {
 		if err := appendMarshalledTag(buf, t, commaPrefix); err != nil { return nil, err}
 		commaPrefix = true
 	}
+	// Append the optional tags
+	for _, t := range ds.OptionTags {
+		if err := appendMarshalledTag(buf, t, commaPrefix); err != nil { return nil, err}
+		commaPrefix = true
+	}
 	buf.WriteString("]")
 
 	buf.WriteString("}")
@@ -46,29 +74,6 @@ func appendMarshalledTag(buf *bytes.Buffer, t interface{}, commaPrefix bool) (er
 		buf.Write(s)
 	}
 	return
-}
-
-
-
-// https://github.com/lsegal/yard/blob/main/lib/yard/tags/tag.rb
-type DocstringTag struct {
-	TagName string `json:"tag_name,omitempty"`
-	Text string `json:"text,omitempty"`
-	Types []string `json:"types,omitempty"`
-	Name string `json:"name,omitempty"`
-}
-
-// https://github.com/lsegal/yard/blob/main/lib/yard/tags/option_tag.rb
-type OptionsDocstringTag struct {
-	DocstringTag
-	Pair *DefaultDocstringTag `json:"pair,omitempty"`
-}
-
-// https://github.com/lsegal/yard/blob/main/lib/yard/tags/default_tag.rb
-type DefaultDocstringTag struct {
-	DocstringTag
-	// TODO: What is this?
-	Defaults interface{} `json:"defaults,omitempty"`
 }
 
 func ParseDocstring(content string) Docstring {
@@ -129,12 +134,9 @@ func (ds *Docstring) parse(content string) (err error) {
 				//       docstring << parse_content(directive.expanded_text).chomp
 				//     end
 			} else {
-				t, err := ds.createTag(tagName, strings.Join(tagLineBuf, "\n"))
-				if err != nil {
+				if err := ds.createTag(tagName, strings.Join(tagLineBuf, "\n")); err != nil {
 					fmt.Println("Error creating tag:")
 					fmt.Println(err)
-				} else {
-					ds.Tags = append(ds.Tags, *t)
 				}
 			}
 			tagName = ""
@@ -165,21 +167,31 @@ func (ds *Docstring) parse(content string) (err error) {
 	return nil
 }
 
-func (ds *Docstring) createTag(tagName string, text string) (tag *DocstringTag, err error) {
-
+func (ds *Docstring) createTag(tagName string, text string) (err error) {
 	switch tagName {
 	case "example":
-		return ds.parseTagWithTitleAndText(tagName, text)
+		if t, err := ds.parseTagWithTitleAndText(tagName, text); err == nil {
+			ds.Tags = append(ds.Tags, *t)
+		} else { return err }
 
 	case "return", "raise":
-		return ds.parseTagWithTypes(tagName, text)
+		if t, err := ds.parseTagWithTypes(tagName, text); err == nil {
+			ds.Tags = append(ds.Tags, *t)
+		} else { return err }
 
 	case "param":
-		return ds.parseTagWithTypesAndName(tagName, text)
+		if t, err := ds.parseTagWithTypesAndName(tagName, text); err == nil {
+			ds.Tags = append(ds.Tags, *t)
+		} else { return err }
 
 	case "option":
-		return ds.parseTagWithOptions(tagName, text)
+		if t, err := ds.parseTagWithOptions(tagName, text); err == nil {
+			ds.OptionTags = append(ds.OptionTags, *t)
+		} else { return err }
 
+	default:
+		//return errors.New(fmt.Sprintf("Unknown tag '@%s'", tagName))
+		return nil
 	}
 
 // - abstract
@@ -204,8 +216,7 @@ func (ds *Docstring) createTag(tagName string, text string) (tag *DocstringTag, 
 // - yield
 // - yieldparam
 // - yieldreturn
-
-	return &DocstringTag{},nil
+	return nil
 }
 
 
