@@ -218,7 +218,6 @@ func assertStringArray(t *testing.T, prefix string, actual []string, expect []st
 	}
 }
 
-
 func AssertParseTagWithTypesNameAndDefault(
 	t *testing.T,
 	prefix string,

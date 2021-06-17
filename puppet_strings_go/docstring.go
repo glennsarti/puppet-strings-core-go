@@ -8,6 +8,43 @@ import (
 	"strings"
 )
 
+func appendMarshalledObject(buf *bytes.Buffer, t interface{}, commaPrefix bool) (err error) {
+	if commaPrefix { buf.WriteString(",") }
+	if s, err := json.Marshal(t); err != nil {
+		return err
+	} else {
+		buf.Write(s)
+	}
+	return
+}
+
+func appendMarshalledKeyAndString(buf *bytes.Buffer, key string, value string, commaPrefix bool) (err error) {
+	if commaPrefix { buf.WriteString(",") }
+	buf.WriteString("\"" + key + "\":")
+	err = appendMarshalledObject(buf, value, false)
+	return
+}
+
+func appendOptionalMarshalledKeyAndString(buf *bytes.Buffer, key string, value string, commaPrefix bool) (err error) {
+	if value == "" { return }
+	return appendMarshalledKeyAndString(buf, key, value, commaPrefix)
+}
+
+func appendMarshalledKeyAndStringArray(buf *bytes.Buffer, key string, values []string, commaPrefix bool) (err error) {
+	if commaPrefix { buf.WriteString(",") }
+	buf.WriteString("\"" + key + "\": [")
+	for i, v := range values {
+		if e := appendMarshalledObject(buf, v, i > 0); e != nil { return err }
+	}
+	buf.WriteString("]")
+	return
+}
+
+func appendOptionalMarshalledKeyAndStringArray(buf *bytes.Buffer, key string, values []string, commaPrefix bool) (err error) {
+	if values == nil || len(values) == 0 { return }
+	return appendMarshalledKeyAndStringArray(buf, key, values, commaPrefix)
+}
+
 type Docstring struct {
 	Text string
 	Tags []DocstringTag
@@ -22,42 +59,20 @@ type DocstringTag struct {
 	Name string `json:"name,omitempty"`
 }
 
-// TODO: The marshaller needs to be updated for
-// https://github.com/puppetlabs/puppet-strings/blob/8a4a87e1b44e7581855d2c59ab4402abf438f9d8/lib/puppet-strings/yard/util.rb#L35
-//
-// https://github.com/lsegal/yard/blob/main/lib/yard/tags/option_tag.rb
-type OptionsDocstringTag struct {
-	DocstringTag
-	Pair *DefaultDocstringTag `json:"pair,omitempty"`
-}
-
-
-// https://github.com/lsegal/yard/blob/main/lib/yard/tags/default_tag.rb
-type DefaultDocstringTag struct {
-	DocstringTag
-	// TODO: What is this?
-	Defaults []string `json:"defaults,omitempty"`
-}
-
 func (ds Docstring) MarshalJSON() ([]byte, error) {
 	buf := bytes.NewBufferString("{")
-	buf.WriteString("\"text\":")
-	if s, err := json.Marshal(ds.Text); err != nil {
-		return nil, err
-	} else {
-		buf.Write(s)
-	}
+	if err := appendMarshalledKeyAndString(buf, "text", ds.Text, false); err != nil { return nil, err }
 
 	commaPrefix := false
 	buf.WriteString(",\"tags\":[")
 	// Append the base tags
 	for _, t := range ds.Tags {
-		if err := appendMarshalledTag(buf, t, commaPrefix); err != nil { return nil, err}
+		if err := appendMarshalledObject(buf, t, commaPrefix); err != nil { return nil, err}
 		commaPrefix = true
 	}
 	// Append the optional tags
 	for _, t := range ds.OptionTags {
-		if err := appendMarshalledTag(buf, t, commaPrefix); err != nil { return nil, err}
+		if err := appendMarshalledObject(buf, t, commaPrefix); err != nil { return nil, err}
 		commaPrefix = true
 	}
 	buf.WriteString("]")
@@ -66,14 +81,10 @@ func (ds Docstring) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func appendMarshalledTag(buf *bytes.Buffer, t interface{}, commaPrefix bool) (err error) {
-	if commaPrefix { buf.WriteString(",") }
-	if s, err := json.Marshal(t); err != nil {
-		return err
-	} else {
-		buf.Write(s)
-	}
-	return
+// https://github.com/lsegal/yard/blob/main/lib/yard/tags/default_tag.rb
+type DefaultDocstringTag struct {
+	DocstringTag
+	Defaults []string `json:"defaults,omitempty"`
 }
 
 func ParseDocstring(content string) Docstring {
@@ -90,6 +101,7 @@ func ParseDocstring(content string) Docstring {
 func newDocstring() Docstring {
 	return Docstring{
 		Tags: make([]DocstringTag, 0),
+		OptionTags: make([]OptionsDocstringTag, 0),
 	}
 }
 

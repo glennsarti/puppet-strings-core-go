@@ -15,10 +15,13 @@ func AssertSingleDocString(
 ) Docstring {
 	ds := ParseDocstring(content)
 
-	if len(ds.Tags) != 1 {
+	tagCount := len(ds.Tags) + len(ds.OptionTags)
+
+	if tagCount != 1 {
 		t.Errorf(
-			"%s: Expected one tag but got %d tag/s", prefix, len(ds.Tags),
+			"%s: Expected one tag but got %d tag/s", prefix, tagCount,
 		)
+		return ds
 	}
 
 	if ds.Tags[0].TagName != expectTagName {
@@ -73,6 +76,18 @@ func xxTestParseReturnTag(t *testing.T) {
 	)
 }
 
+func TestParseOptionTag(t *testing.T) {
+
+	ds := AssertSingleDocString(
+		t,
+		"Option tag with a type",
+		"@option param2 [String] :option an option\n",
+		"return",
+		"Returns nothing.",
+	)
+
+	fmt.Println(ds)
+}
 
 // "@return Returns nothing.\n" +
 // "@return [Undef]\n" +
