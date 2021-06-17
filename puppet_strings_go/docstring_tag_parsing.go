@@ -14,8 +14,8 @@ func (ds *Docstring) typelistClosingChars() []rune {
 	return[]rune{'>', '}', ')', ']', '"'}
 }
 
-// Same as typelist* but without the '(' and ')'
-// Can't allow () in a default tag, otherwise the grammar is too ambiguous when types is omitted.
+// Same as typelist but without the '(' and ')'
+// Can't allow () in a default tag, otherwise the grammar is too ambiguous when types are omitted.
 func (ds *Docstring) defaultTagOpeningChars() []rune {
 	return []rune{'"', '[', '{', '<'}
 }
@@ -62,11 +62,15 @@ func (ds *Docstring) parseTagWithOptions(tagName string, text string) (tag *Opti
 	if err != nil { return nil, err }
 	def, err := ds.parseTagWithTypesNameAndDefault(tagName, remainText)
 
+	fmt.Println("--------------")
+	fmt.Println(def)
+	fmt.Println("--------------")
+
 	return &OptionsDocstringTag{
 		Pair: def,
 		DocstringTag: DocstringTag{
 			TagName: tagName,
-			Text: name,
+			Name: name,
 		},
 	}, nil
 }
@@ -77,9 +81,10 @@ func (ds *Docstring) parseTagWithTypesNameAndDefault(tagName string, text string
 	if name == "" {
 		name, remainText, err = ds.extractNameFromText(text)
 		if err != nil { return nil, err }
+		remainText = strings.TrimSpace(remainText)
 	}
 
-	if strings.HasPrefix(strings.TrimSpace(remainText), "(") {
+	if strings.HasPrefix(remainText, "(") {
 		defaults := []string{}
 		before := ""
 		before, defaults, remainText, err = ds.extractTypesAndNameFromText(remainText, []rune{'('}, []rune{')'})

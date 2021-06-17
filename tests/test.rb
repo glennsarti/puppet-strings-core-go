@@ -17,11 +17,13 @@ c = "An overview for the first overload.\n" +
 "  $result = func4x(1, 'foooo')\n" +
 "\n"
 
+c = "@option foo [String] bar (nil) baz"
+
 p = YARD::DocstringParser.new()
 p.parse(c)
 
 puts "-----"
-pt = p.tags[4]
+pt = p.tags[0]
 require 'pry'; binding.pry
 
 puts "tag_name: #{pt.tag_name}"

@@ -40,7 +40,7 @@ func AssertExtractTypesAndNameFromText(t *testing.T, prefix string, content stri
 	}
 }
 
-func xxTestExtractTypesAndNameFromText1(t *testing.T) {
+func TestExtractTypesAndNameFromText1(t *testing.T) {
 
 	AssertExtractTypesAndNameFromText(t,
 		"One type",
@@ -189,33 +189,6 @@ func xxTestExtractTypesAndNameFromText1(t *testing.T) {
 		[]string{"\"foo, bar\"", "'baz, qux'", "in\"them,iddle\""},
 		"",
 	)
-}
-
-func assertStringArray(t *testing.T, prefix string, actual []string, expect []string) {
-	// Check for nil-ness
-	if expect == nil && actual == nil { return }
-	if expect == nil && actual != nil {
-		t.Errorf("%s: Expected list to be nil but got a list", prefix)
-		return
-	}
-	if expect != nil && actual == nil {
-		t.Errorf("%s: Expected a list but got nil", prefix)
-		return
-	}
-	if len(actual) != len(expect) {
-		t.Errorf(
-			"%s: Expected list to be [%s], but got [%s]",
-			prefix,
-			strings.Join(expect, ", "),
-			strings.Join(actual, ", "),
-		)
-	} else {
-		for i, item := range expect {
-			if actual[i] != item {
-				t.Errorf("%s: Expected list item %d to be '%s' but got '%s'", prefix, i, item, actual[i])
-			}
-		}
-	}
 }
 
 func AssertParseTagWithTypesNameAndDefault(
