@@ -220,7 +220,6 @@ func AssertParseTagWithTypesNameAndDefault(
 	assertStringArray(t, prefix + " (Defaults)", tag.Defaults, expectDefault)
 }
 
-
 func TestParseTagWithTypesNameAndDefault1(t *testing.T) {
 	AssertParseTagWithTypesNameAndDefault(
 		t,

@@ -62,10 +62,6 @@ func (ds *Docstring) parseTagWithOptions(tagName string, text string) (tag *Opti
 	if err != nil { return nil, err }
 	def, err := ds.parseTagWithTypesNameAndDefault(tagName, remainText)
 
-	fmt.Println("--------------")
-	fmt.Println(def)
-	fmt.Println("--------------")
-
 	return &OptionsDocstringTag{
 		Pair: def,
 		DocstringTag: DocstringTag{
